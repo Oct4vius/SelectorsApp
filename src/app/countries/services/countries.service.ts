@@ -4,7 +4,7 @@ import {
   Region,
   SmallCountry,
 } from '../interfaces/countries.interfaces';
-import { map, Observable, of, tap } from 'rxjs';
+import { combineLatest, map, Observable, of, tap } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 
 @Injectable({
@@ -31,7 +31,7 @@ export class CountriesService {
   getCountriesByRegion(region: Region): Observable<SmallCountry[]> {
     if (!region) return of([]);
 
-    const url: string = `${this.baseUrl}/region/${region}?field=cca3,name,borders`;
+    const url: string = `${this.baseUrl}/region/${region}?fields=cca3,name,borders`;
 
     return this.http.get<Country[]>(url).pipe(
       map((countries) =>
@@ -44,4 +44,34 @@ export class CountriesService {
       tap((res) => console.log({ res }))
     );
   }
+
+  getCountriesByAlphaCode(alphaCode: string): Observable<SmallCountry> {
+
+
+    const url = `${this.baseUrl}/alpha/${alphaCode}?fields=cca3,name,borders`;
+
+    return this.http.get<Country>(url).pipe(
+      tap((res) => console.log({ res })),
+      map((country) => ({
+        name: country.name.common,
+        cca3: country.cca3,
+        borders: country.borders ?? [],
+      }))
+    );
+  }
+
+  getCountryBordersByCodes(borders: string[]): Observable<SmallCountry[]> {
+    if(!borders || borders.length === 0) return of([]);
+
+    const countriesRequests: Observable<SmallCountry>[] = []
+
+    borders.forEach((code) => {
+      const request = this.getCountriesByAlphaCode(code);
+      countriesRequests.push(request);
+    })
+
+    return combineLatest( countriesRequests )
+
+  }
+
 }
